@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Deploy Job
     env:
-      REACT_APP_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+      VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
 
     steps:
       - name: Checkout repository
