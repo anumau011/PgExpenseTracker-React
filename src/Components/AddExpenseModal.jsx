@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import axios from 'axios';
 import { IndianRupee, X, Plus, Tag, Calendar, Hash } from "lucide-react";
 import { useGroup } from "../Context/GroupContext";
+import { getApiUrl } from "../Utils/api";
 
 export const AddExpenseModal = ({ isOpen, onClose }) => {
   const [amount, setAmount] = useState("");
@@ -37,7 +38,7 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
       try {
         const token = localStorage.getItem('token');
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/pg/addExpense`,
+          getApiUrl('/pg/addExpense'),
           expense,
           {
             headers: {

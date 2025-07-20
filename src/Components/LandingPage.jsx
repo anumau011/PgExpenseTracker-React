@@ -7,6 +7,7 @@ import JoinGroupModal from './JoinGroupModal';
 import axios from 'axios';
 import { GroupDashboard } from './GroupDashboard';
 import { useGroup } from '../Context/GroupContext';
+import { getApiUrl } from "../Utils/api";
 
 
 export function LandingPage({
@@ -74,7 +75,7 @@ export function LandingPage({
       return;
     }
 
-    const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/pg/my-group`, {
+    const response = await axios.get(getApiUrl('/pg/my-group'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },

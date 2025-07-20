@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import axios from 'axios';
+import { getApiUrl } from "../Utils/api";
 
 export default function JoinGroupModal({ onClose }) {
   const [groupCode, setGroupCode] = useState('');
@@ -18,7 +19,7 @@ export default function JoinGroupModal({ onClose }) {
       const token = localStorage.getItem('token');
 
       const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/pg/join-group`,
+        getApiUrl('/pg/join-group'),
         { groupCode: groupCode.trim(),
           userId: userId.trim() },
         {

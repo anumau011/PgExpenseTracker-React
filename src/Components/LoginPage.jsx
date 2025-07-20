@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { useUser } from '../Context/CurrentUserIdContext';
+import { getApiUrl, getBaseUrl } from "../Utils/api";
 
 export function LoginPage() {
   const [userId, setUserId] = useState('');
@@ -30,7 +31,7 @@ export function LoginPage() {
     setError('');
     setIsLoading(true);
 
-    console.log(import.meta.env.VITE_BACKEND_URL);
+    console.log(getBaseUrl());
 
     if (!userId || !password) {
       setError('Please fill in all fields');
@@ -40,7 +41,7 @@ export function LoginPage() {
 
     try {
       
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/auth/login`, {
+      const response = await axios.post(getApiUrl('/auth/login'), {
         userId,
         password,
       });

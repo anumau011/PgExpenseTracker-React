@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { getApiUrl } from "../Utils/api";
 
 export default function CreateGroupForm({onClose}){
   const [groupName, setGroupName] = useState('');
@@ -17,7 +18,7 @@ export default function CreateGroupForm({onClose}){
       const token = localStorage.getItem('token');
 
       const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/pg/create-group`,
+        getApiUrl('/pg/create-group'),
         { groupName: groupName.trim() },
         {
           headers: {

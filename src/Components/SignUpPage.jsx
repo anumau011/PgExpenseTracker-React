@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff} from 'lucide-react';
 import axios from 'axios';
 import { useNavigate,Link } from 'react-router-dom';
+import { getApiUrl } from "../Utils/api";
 
 
 
@@ -56,7 +57,7 @@ export function SignUpPage() {
 
 // Simulate API call
 try {
-  const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/auth/register`, {
+  const response = await axios.post(getApiUrl('/auth/register'), {
     name: formData.name,
     userId: formData.userId,
     password: formData.password

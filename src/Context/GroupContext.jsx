@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { calculateBalances, getTotalExpenses } from "../Utils/Calculation";
 import axios from "axios";
 import { useUser } from "./CurrentUserIdContext";
+import { getApiUrl } from "../Utils/api";
 
 const GroupContext = createContext();
 export const useGroup = () => useContext(GroupContext);
@@ -20,7 +21,7 @@ export const GroupProvider = ({ children }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/pg/my-group`,
+        getApiUrl('/pg/my-group'),
         {
           headers: {
             Authorization: `Bearer ${token}`,
