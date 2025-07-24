@@ -8,17 +8,14 @@ import { MemberList } from "./MemberList";
 import { AddExpenseModal } from "./AddExpenseModal";
 
 export function GroupDashboard() {
-  // State management
   const [activeTab, setActiveTab] = useState('expenses');
   const [showAddExpenses, setShowAddExpenses] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Context hooks
   const { currentGroup, fetchGroup } = useGroup();
   const { currentUserId } = useUser();
   const { currentBalance } = useGroup();
 
-  // Memoized calculations
   const balance = useMemo(() => {
     return calculateBalances(
       currentGroup?.expenses || [],
@@ -30,7 +27,6 @@ export function GroupDashboard() {
     return getTotalExpenses(currentGroup?.expenses || []);
   }, [currentGroup?.expenses]);
 
-  // Fetch group data on component mount
   useEffect(() => {
     const loadGroupData = async () => {
       if (!currentGroup && currentUserId) {
@@ -51,10 +47,9 @@ export function GroupDashboard() {
     }
   }, [currentUserId, currentGroup, fetchGroup]);
 
-  // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading group...</p>
@@ -63,10 +58,9 @@ export function GroupDashboard() {
     );
   }
 
-  // Not logged in
   if (!currentUserId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div className="text-center">
           <p className="text-gray-600">Please log in to view your group.</p>
         </div>
@@ -74,10 +68,9 @@ export function GroupDashboard() {
     );
   }
 
-  // No group found
   if (!currentGroup) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div className="text-center">
           <p className="text-gray-600">No group found. Please create or join a group.</p>
         </div>
@@ -89,53 +82,38 @@ export function GroupDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-white/20 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg mr-3">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">{currentGroup.groupName}</h1>
-                <p className="text-sm text-gray-600">Code: {currentGroup.groupCode}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2 px-3 py-2 bg-white/50 rounded-lg">
-                <User className="h-4 w-4 text-gray-600" />
-              </div>
-
-              <button
-                onClick={() => setShowAddExpenses(true)}
-                className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transform hover:scale-[1.02] transition-all"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Expense
-              </button>
-
-              <button
-                className="p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                title="Leave Group"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
-
-              <button
-                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Settings"
-              >
-                <Settings className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-between py-4">
+      {/* Left Side: Group Info */}
+      <div className="flex items-center">
+        <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg mr-3">
+          <Users className="h-6 w-6 text-white" />
         </div>
-      </header>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">{currentGroup.groupName}</h1>
+          <p className="text-sm text-gray-600">Code: {currentGroup.groupCode}</p>
+        </div>
+      </div>
+
+      {/* Right Side: Add Expense Button */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setShowAddExpenses(true)}
+          className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transform hover:scale-[1.02] transition-all"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Expense
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
             <div className="flex items-center justify-between">
               <div>
@@ -176,11 +154,11 @@ export function GroupDashboard() {
 
         {/* Tabs */}
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20">
-          <nav className="border-b border-gray-200">
-            <div className="flex space-x-8 px-6">
+          <nav className="border-b border-gray-200 overflow-x-auto">
+            <div className="flex flex-wrap sm:flex-nowrap space-x-4 px-4 sm:px-6">
               <button
                 onClick={() => setActiveTab('expenses')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-3 px-2 border-b-2 font-medium text-sm ${
                   activeTab === 'expenses'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -190,7 +168,7 @@ export function GroupDashboard() {
               </button>
               <button
                 onClick={() => setActiveTab('members')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-3 px-2 border-b-2 font-medium text-sm ${
                   activeTab === 'members'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
