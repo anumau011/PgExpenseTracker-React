@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import { SignUpPage } from "./Components/SignUpPage";
 import { LoginPage } from "./Components/LoginPage";
 import { LandingPage } from "./Components/LandingPage";
@@ -26,6 +27,7 @@ function App() {
           </GroupProvider>
         </UserProvider>
       </div>
+      <Toaster />
     </>
   );
 }

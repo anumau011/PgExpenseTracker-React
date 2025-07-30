@@ -20,8 +20,9 @@ export default function JoinGroupModal({ onClose }) {
 
       const response = await axios.post(
         getApiUrl('/pg/join-group'),
-        { groupCode: groupCode.trim(),
-          userId: userId.trim() },
+        { 
+          groupCode: groupCode.trim()
+          },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -56,14 +57,7 @@ export default function JoinGroupModal({ onClose }) {
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring focus:border-blue-300"
                 required
               />
-              <input
-                type="text"
-                placeholder="Enter your mobile number"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring focus:border-blue-300"
-                required
-              />
+              
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
