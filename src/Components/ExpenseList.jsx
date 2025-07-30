@@ -5,8 +5,7 @@ import { getApiUrl } from "../Utils/api";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 
-export const ExpenseList = ({ expenses, onExpenseDeleted }) => {
-  const [expenseToDelete, setExpenseToDelete] = useState(null);
+export const ExpenseList = ({ expenses, onExpenseDeleted, onDeleteRequest }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState(null);
 
@@ -70,7 +69,7 @@ export const ExpenseList = ({ expenses, onExpenseDeleted }) => {
 
   return (
     <>
-      <div className={`relative ${expenseToDelete ? "blur-sm pointer-events-none" : ""}`}>
+      <div className="relative">
         <AnimatePresence initial={false}>
           {reversedExpenses.map((expense) => (
             <motion.div
@@ -83,7 +82,7 @@ export const ExpenseList = ({ expenses, onExpenseDeleted }) => {
               }}
               exit={{ opacity: 0, scale: 0.95, x: -20 }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
-              className={`bg-white/50 rounded-lg p-4 border border-white/20 hover:bg-white/70 transition-colors mb-4 ${
+              className={`expense-card bg-white/50 rounded-lg p-4 border border-white/20 hover:bg-white/70 transition-colors mb-4 ${
                 deletingExpenseId === expense.id ? 'bg-red-50/50 border-red-200' : ''
               }`}
             >
@@ -122,7 +121,7 @@ export const ExpenseList = ({ expenses, onExpenseDeleted }) => {
                       ₹ {expense.amount.toFixed(2)}
                     </p>
                     <button
-                      onClick={() => setExpenseToDelete(expense)}
+                      onClick={() => onDeleteRequest && onDeleteRequest(expense)}
                       disabled={deletingExpenseId === expense.id}
                       className={`text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed ${
                         deletingExpenseId === expense.id ? 'animate-pulse' : ''
@@ -138,48 +137,6 @@ export const ExpenseList = ({ expenses, onExpenseDeleted }) => {
           )}
         </AnimatePresence>
       </div>
-
-      {/* Confirmation Modal */}
-      {expenseToDelete && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm bg-white/10">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white shadow-xl rounded-lg p-6 w-[90%] max-w-md"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Deletion</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Are you sure you want to delete the expense{" "}
-              <span className="font-medium">{expenseToDelete.description}</span> of ₹{" "}
-              {expenseToDelete.amount.toFixed(2)}?
-            </p>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setExpenseToDelete(null)}
-                disabled={isDeleting}
-                className="text-gray-600 hover:text-gray-800 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(expenseToDelete.id)}
-                disabled={isDeleting}
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isDeleting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete'
-                )}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </>
   );
 };

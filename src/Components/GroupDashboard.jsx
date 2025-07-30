@@ -1,64 +1,135 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { motion } from "framer-motion";
+import axios from "axios";
+import { toast } from "react-hot-toast";
+import { 
+  Plus, Users, TrendingUp, IndianRupee, ArrowRight, ArrowLeft, X 
+} from 'lucide-react';
+
+// Context and utilities
 import { useGroup } from "../Context/GroupContext";
-import { Plus, Users, TrendingUp, Settings, LogOut, IndianRupee, User,ArrowRight ,ArrowLeft } from 'lucide-react';
-import { calculateBalances, getTotalExpenses } from "../Utils/Calculation";
 import { useUser } from "../Context/CurrentUserIdContext";
+import { calculateBalances, getTotalExpenses } from "../Utils/Calculation";
+import { getApiUrl } from "../Utils/api";
+
+// Components
 import { ExpenseList } from "./ExpenseList";
 import { MemberList } from "./MemberList";
 import { AddExpenseModal } from "./AddExpenseModal";
 
 export function GroupDashboard() {
+  // === STATE MANAGEMENT ===
   const [activeTab, setActiveTab] = useState('expenses');
   const [showAddExpenses, setShowAddExpenses] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Date setup for previous month as default
+  // Delete confirmation modal state
+  const [expenseToDelete, setExpenseToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // === DATE INITIALIZATION ===
+  // Set default month to previous month for better UX
   const today = new Date();
   const initialMonth = today.getMonth();
   const initialYear = today.getFullYear();
-
   const previousMonth = initialMonth === 0 ? 11 : initialMonth - 1;
   const previousYear = initialMonth === 0 ? initialYear - 1 : initialYear;
-
+  
   const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const [selectedYear, setSelectedYear] = useState(previousYear);
 
+  // === CONTEXT HOOKS ===
   const { currentGroup, fetchGroup, currentBalance } = useGroup();
   const { currentUserId } = useUser();
 
-  // Handle expense deletion
+  // === EXPENSE DELETION HANDLERS ===
+  
+  /**
+   * Refreshes group data after an expense is deleted
+   * Called after successful deletion to update all calculations
+   */
   const handleExpenseDeleted = useCallback(async (deletedExpenseId) => {
-    // Refresh the group data to update all calculations
     try {
       await fetchGroup();
     } catch (error) {
-      console.error('Error refreshing group data:', error);
+      console.error('Error refreshing group data after deletion:', error);
     }
   }, [fetchGroup]);
 
-  // Calculate total expenses (all-time)
+  /**
+   * Shows the delete confirmation modal
+   * Called when user clicks delete button on an expense
+   */
+  const handleDeleteRequest = useCallback((expense) => {
+    setExpenseToDelete(expense);
+  }, []);
+
+  /**
+   * Performs the actual expense deletion via API
+   * Handles success/error states and UI feedback
+   */
+  const handleDelete = async (expenseId) => {
+    const token = localStorage.getItem("token");
+    setIsDeleting(true);
+    
+    try {
+      await axios.delete(getApiUrl(`/pg/delete/expense/${expenseId}`), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      toast.success("Expense deleted successfully!", {
+        duration: 3000,
+        position: 'top-center',
+      });
+      
+      setExpenseToDelete(null);
+      await handleExpenseDeleted(expenseId);
+      
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Something went wrong";
+      toast.error(errorMessage);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // === COMPUTED VALUES (MEMOIZED) ===
+  
+  /**
+   * Calculate total expenses across all time periods
+   */
   const totalExpense = useMemo(() => {
     return getTotalExpenses(currentGroup?.expenses || []);
   }, [currentGroup?.expenses]);
 
-  // Filter current month expenses
+  /**
+   * Filter expenses for current month only
+   */
   const currentMonthExpenses = useMemo(() => {
     const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
-    return (currentGroup?.expenses || []).filter(exp => {
-      const date = new Date(exp.paymentDate);
-      return date.getMonth() === month && date.getFullYear() === year;
+    return (currentGroup?.expenses || []).filter(expense => {
+      const expenseDate = new Date(expense.paymentDate);
+      return expenseDate.getMonth() === currentMonth && 
+             expenseDate.getFullYear() === currentYear;
     });
   }, [currentGroup?.expenses]);
 
-  // Calculate current month totals
+  /**
+   * Calculate total for current month expenses
+   */
   const totalCurrentMonthExpense = useMemo(() => {
     return getTotalExpenses(currentMonthExpenses);
   }, [currentMonthExpenses]);
 
-  // Helper function to filter user expenses
+  // === UTILITY FUNCTIONS ===
+  
+  /**
+   * Filter expenses by user ID with multiple matching strategies
+   * Handles different user ID formats and name matching
+   */
   const getUserExpenses = useCallback((expenses, userId, users) => {
     if (!userId || !users) return [];
     
@@ -68,33 +139,41 @@ export function GroupDashboard() {
       String(user.userId) === String(userId)
     );
     
-    return expenses.filter(exp => {
-      return exp.paidBy === userId ||
-             exp.userId === userId ||
-             exp.paidBy === String(userId) ||
-             exp.userId === String(userId) ||
-             String(exp.paidBy) === String(userId) ||
-             String(exp.userId) === String(userId) ||
-             (currentUser && exp.paidBy === currentUser.name) ||
-             (currentUser && exp.paidBy === currentUser.username);
+    return expenses.filter(expense => {
+      return expense.paidBy === userId ||
+             expense.userId === userId ||
+             expense.paidBy === String(userId) ||
+             expense.userId === String(userId) ||
+             String(expense.paidBy) === String(userId) ||
+             String(expense.userId) === String(userId) ||
+             (currentUser && expense.paidBy === currentUser.name) ||
+             (currentUser && expense.paidBy === currentUser.username);
     });
   }, []);
 
-  // Calculate current user's current month expense
+  // === USER-SPECIFIC CALCULATIONS ===
+  
+  /**
+   * Calculate current user's expenses for the current month
+   */
   const currentUserCurrentMonthExpense = useMemo(() => {
-    if (!currentGroup?.users || !currentUserId || !currentMonthExpenses.length) return 0;
+    if (!currentGroup?.users || !currentUserId || !currentMonthExpenses.length) {
+      return 0;
+    }
     
     const userExpenses = getUserExpenses(currentMonthExpenses, currentUserId, currentGroup.users);
-    return userExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+    return userExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
   }, [currentMonthExpenses, currentUserId, currentGroup?.users, getUserExpenses]);
 
-  // Calculate each user's current month expenses (for MemberList)
+  /**
+   * Calculate each user's current month expenses for MemberList component
+   */
   const currentMonthUserExpenses = useMemo(() => {
     if (!currentGroup?.users || currentMonthExpenses.length === 0) return [];
     
     return currentGroup.users.map(user => {
       const userExpenses = getUserExpenses(currentMonthExpenses, user.userId, currentGroup.users);
-      const totalSpent = userExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+      const totalSpent = userExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
       
       return {
         userId: user.userId,
@@ -102,32 +181,37 @@ export function GroupDashboard() {
       };
     });
   }, [currentGroup?.users, currentMonthExpenses, getUserExpenses]);
+  // === PREVIOUS MONTHS TAB CALCULATIONS ===
   
-  // Filter expenses based on selected month and year
+  /**
+   * Filter expenses based on selected month and year (for Previous Months tab)
+   */
   const filteredExpenses = useMemo(() => {
     if (!currentGroup?.expenses) return [];
     
-    return currentGroup.expenses.filter(exp => {
-      const date = new Date(exp.paymentDate);
-      return (
-        date.getMonth() === selectedMonth &&
-        date.getFullYear() === selectedYear
-      );
+    return currentGroup.expenses.filter(expense => {
+      const expenseDate = new Date(expense.paymentDate);
+      return expenseDate.getMonth() === selectedMonth &&
+             expenseDate.getFullYear() === selectedYear;
     });
   }, [currentGroup?.expenses, selectedMonth, selectedYear]);
 
-  // Calculate total expenses for filtered period
+  /**
+   * Calculate total expenses for the selected month/year period
+   */
   const totalFilteredExpense = useMemo(() => {
     return getTotalExpenses(filteredExpenses);
   }, [filteredExpenses]);
 
-  // Calculate each user's expense for the selected month (previous tab)
+  /**
+   * Calculate each user's expenses for the selected month (Previous Months tab)
+   */
   const filteredUserExpenses = useMemo(() => {
     if (!currentGroup?.users || filteredExpenses.length === 0) return [];
     
     return currentGroup.users.map(user => {
       const userExpenses = getUserExpenses(filteredExpenses, user.userId, currentGroup.users);
-      const totalSpent = userExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+      const totalSpent = userExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
       
       return {
         userId: user.userId,
@@ -136,36 +220,49 @@ export function GroupDashboard() {
     });
   }, [currentGroup?.users, filteredExpenses, getUserExpenses]);
 
-  // Calculate current user's expense for selected month (previous tab)
+  /**
+   * Calculate current user's expenses for the selected month (Previous Months tab)
+   */
   const currentUserExpense = useMemo(() => {
-    if (!currentGroup?.users || !currentUserId || !filteredExpenses.length) return 0;
+    if (!currentGroup?.users || !currentUserId || !filteredExpenses.length) {
+      return 0;
+    }
     
     const userExpenses = getUserExpenses(filteredExpenses, currentUserId, currentGroup.users);
-    return userExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+    return userExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
   }, [filteredExpenses, currentUserId, currentGroup?.users, getUserExpenses]);
 
-  // Load group data on component mount
+  // === EFFECTS ===
+  
+  /**
+   * Load group data on component mount
+   * Only fetch if currentUserId exists and currentGroup is not already loaded
+   */
   useEffect(() => {
     const loadGroupData = async () => {
-      if (currentUserId) {
-        if (!currentGroup) {
-          setIsLoading(true);
-          try {
-            await fetchGroup();
-          } catch (error) {
-            console.error('Error fetching group:', error);
-          } finally {
-            setIsLoading(false);
-          }
-        } else {
+      if (!currentUserId) return;
+      
+      if (!currentGroup) {
+        setIsLoading(true);
+        try {
+          await fetchGroup();
+        } catch (error) {
+          console.error('Error fetching group data:', error);
+        } finally {
           setIsLoading(false);
         }
+      } else {
+        setIsLoading(false);
       }
     };
 
     loadGroupData();
   }, [currentUserId, currentGroup, fetchGroup]);
 
+  // === LOADING AND ERROR STATES ===
+
+  // === LOADING AND ERROR STATES ===
+  
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -197,13 +294,17 @@ export function GroupDashboard() {
     );
   }
 
+  // === RENDER ===
+
+  // === RENDER ===
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Header */}
+      {/* === HEADER === */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-white/20 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
-            {/* Left Side: Group Info */}
+            {/* Group Information */}
             <div className="flex items-center">
               <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg mr-3">
                 <Users className="h-6 w-6 text-white" />
@@ -212,29 +313,29 @@ export function GroupDashboard() {
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate max-w-48 sm:max-w-none">
                   {currentGroup.groupName}
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-600">Code: {currentGroup.groupCode}</p>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  Code: {currentGroup.groupCode}
+                </p>
               </div>
             </div>
 
-            {/* Right Side: Add Expense Button */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowAddExpenses(true)}
-                className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transform hover:scale-[1.02] transition-all"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Expense
-              </button>
-            </div>
+            {/* Add Expense Button */}
+            <button
+              onClick={() => setShowAddExpenses(true)}
+              className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transform hover:scale-[1.02] transition-all"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Expense
+            </button>
           </div>
         </div>
       </header>
 
-
-      {/* Main Content */}
+      {/* === MAIN CONTENT === */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {/* Stats Overview */}
+        {/* === STATISTICS OVERVIEW === */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          {/* Total Expenses Card */}
           <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-4 sm:p-6 shadow-lg border border-white/20">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
@@ -256,6 +357,7 @@ export function GroupDashboard() {
             </div>
           </div>
 
+          {/* Total Members Card */}
           <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-4 sm:p-6 shadow-lg border border-white/20">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
@@ -268,6 +370,7 @@ export function GroupDashboard() {
             </div>
           </div>
 
+          {/* Current User's Expenses Card */}
           <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-4 sm:p-6 shadow-lg border border-white/20 sm:col-span-2 lg:col-span-1">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
@@ -291,11 +394,12 @@ export function GroupDashboard() {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* === TABBED CONTENT AREA === */}
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20">
+          {/* Tab Navigation */}
           <nav className="border-b border-gray-200 overflow-x-auto scrollbar-hide">
             <div className="flex space-x-2 sm:space-x-4 px-4 sm:px-6 min-w-max">
-              {/* Current month expenses tab */}
+              {/* Current Month Expenses Tab */}
               <button
                 onClick={() => setActiveTab('expenses')}
                 className={`py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
@@ -307,7 +411,7 @@ export function GroupDashboard() {
                 Expenses ({currentMonthExpenses?.length || 0})
               </button>
               
-              {/* Members tab */}
+              {/* Members Tab */}
               <button
                 onClick={() => setActiveTab('members')}
                 className={`py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
@@ -319,7 +423,7 @@ export function GroupDashboard() {
                 Members ({currentGroup.users?.length || 0})
               </button>
               
-              {/* Previous months tab */}
+              {/* Previous Months Tab */}
               <button
                 onClick={() => setActiveTab('previous')}
                 className={`py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
@@ -333,29 +437,35 @@ export function GroupDashboard() {
             </div>
           </nav>
 
+          {/* Tab Content */}
           <div className="p-4 sm:p-6">
-            {/* Current month expenses */}
+            {/* Current Month Expenses Content */}
             {activeTab === 'expenses' && (
               <ExpenseList 
                 expenses={currentMonthExpenses || []} 
                 onExpenseDeleted={handleExpenseDeleted}
+                onDeleteRequest={handleDeleteRequest}
               />
             )}
             
-            {/* Members with their balances */}
+            {/* Members Content */}
             {activeTab === 'members' && (
               Array.isArray(currentGroup.users) && currentGroup.users.length > 0 ? (
-                <MemberList users={currentGroup.users} balances={currentMonthUserExpenses} />
+                <MemberList 
+                  users={currentGroup.users} 
+                  balances={currentMonthUserExpenses} 
+                />
               ) : (
                 <p className="text-center text-gray-500">No members found.</p>
               )
             )}
             
-            {/* Previous months content */}
+            {/* Previous Months Content */}
             {activeTab === 'previous' && (
               <>
+                {/* Month/Year Selection Controls */}
                 <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  {/* Month navigation buttons */}
+                  {/* Navigation Buttons */}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
@@ -367,15 +477,18 @@ export function GroupDashboard() {
                         }
                       }}
                       className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Previous Month"
                     >
                       <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
+                    
                     <span className="text-gray-700 font-medium text-sm sm:text-base px-2 sm:px-4 py-1 bg-gray-50 rounded-lg">
                       {new Date(selectedYear, selectedMonth).toLocaleString('default', {
                         month: 'long',
                         year: 'numeric',
                       })}
                     </span>
+                    
                     <button
                       onClick={() => {
                         if (selectedMonth === 11) {
@@ -386,12 +499,13 @@ export function GroupDashboard() {
                         }
                       }}
                       className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Next Month"
                     >
                       <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
                     </button>
                   </div>
 
-                  {/* Month & Year dropdowns */}
+                  {/* Dropdown Selectors */}
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <select
                       value={selectedMonth}
@@ -422,22 +536,31 @@ export function GroupDashboard() {
                   </div>
                 </div>
 
-                {/* Member expenses summary */}
+                {/* Member Expenses Summary for Selected Month */}
                 {filteredUserExpenses.length > 0 && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Member Expenses for {new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                      Member Expenses for {new Date(selectedYear, selectedMonth).toLocaleString('default', { 
+                        month: 'long', 
+                        year: 'numeric' 
+                      })}
                     </h3>
-                    <MemberList users={currentGroup.users} balances={filteredUserExpenses} />
+                    <MemberList 
+                      users={currentGroup.users} 
+                      balances={filteredUserExpenses} 
+                    />
                   </div>
                 )}
 
-                {/* Detailed expense list */}
+                {/* Detailed Expense List for Selected Month */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense Details</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Expense Details
+                  </h3>
                   <ExpenseList 
                     expenses={filteredExpenses} 
                     onExpenseDeleted={handleExpenseDeleted}
+                    onDeleteRequest={handleDeleteRequest}
                   />
                 </div>
               </>
@@ -446,12 +569,81 @@ export function GroupDashboard() {
         </div>
       </main>
 
+      {/* === MODALS === */}
+      
       {/* Add Expense Modal */}
       {showAddExpenses && (
         <AddExpenseModal
           isOpen={showAddExpenses}
           onClose={() => setShowAddExpenses(false)}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {expenseToDelete && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center backdrop-blur-sm bg-black/30">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="bg-white shadow-2xl rounded-xl p-6 w-[90%] max-w-md mx-4 border border-gray-200 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Confirm Deletion
+              </h3>
+              <button
+                onClick={() => setExpenseToDelete(null)}
+                disabled={isDeleting}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-50 transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete the expense{" "}
+              <span className="font-semibold text-gray-900">
+                "{expenseToDelete.description}"
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold text-red-600">
+                ₹{expenseToDelete.amount.toFixed(2)}
+              </span>
+              ?
+            </p>
+            
+            {/* Modal Actions */}
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setExpenseToDelete(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(expenseToDelete.id)}
+                disabled={isDeleting}
+                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-colors"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );
