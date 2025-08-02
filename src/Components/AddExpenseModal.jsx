@@ -11,7 +11,7 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
   const [newTag, setNewTag] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const { fetchGroup } = useGroup();
+  const { fetchGroup, currentGroup } = useGroup();
 
   const commonTags = [
     "grocery", "vegetables", "fruits", "bread", "paneer", "milk",
@@ -28,11 +28,12 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
     e.preventDefault();
     setIsLoading(true);
 
-    if (amount && tags.length > 0 && selectedDate) {
+    if (amount && tags.length > 0 && selectedDate && currentGroup) {
       const expense = {
         amount: Math.round(parseFloat(amount) * 100) / 100,
         paymentDate: selectedDate,
-        tags: tags.filter(tag => tag.trim() !== '')
+        tags: tags.filter(tag => tag.trim() !== ''),
+        groupCode: currentGroup.groupCode || currentGroup.code || currentGroup.id
       };
 
       try {
@@ -57,6 +58,9 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
       } finally {
         setIsLoading(false);
       }
+    } else if (!currentGroup) {
+      alert('No group selected. Please select a group first.');
+      setIsLoading(false);
     }
   };
 
@@ -98,7 +102,14 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white p-6 border-b border-gray-200 rounded-t-2xl flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-900">Add New Expense</h2>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Add New Expense</h2>
+            {currentGroup && (
+              <p className="text-sm text-gray-600 mt-1">
+                Adding to: <span className="font-medium text-blue-600">{currentGroup.groupName || currentGroup.name || 'Current Group'}</span>
+              </p>
+            )}
+          </div>
           <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-full">
             <X className="h-5 w-5 text-gray-500" />
           </button>
@@ -213,7 +224,7 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
             </button>
             <button
               type="submit"
-              disabled={!amount || tags.length === 0 || isLoading}
+              disabled={!amount || tags.length === 0 || !currentGroup || isLoading}
               className={`flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 ${isLoading ? 'cursor-not-allowed' : ''}`}
             >
               {isLoading ? "Adding..." : "Add Expense"}

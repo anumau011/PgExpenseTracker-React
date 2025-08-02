@@ -16,22 +16,60 @@ export const GroupProvider = ({ children }) => {
   const { currentUserId } = useUser(); // ✅ keep here, but read it in useEffect
    
 
-  // Fetch group from backend
+  // Fetch current group data from backend (refreshes the current selected group)
   const fetchGroup = async () => {
+    if (!currentGroup?.groupCode && !currentGroup?.code && !currentGroup?.id) {
+      console.warn("No current group selected to fetch");
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
+      
+      // Fetch all groups and find the current one
       const response = await axios.get(
-        getApiUrl('/pg/my-group'),
+        getApiUrl('/pg/my-groups'),
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
       );
-      const group = response.data;
-      setCurrentGroup(group);
+      
+      const groups = Array.isArray(response.data) ? response.data : [response.data];
+      const groupIdentifier = currentGroup.groupCode || currentGroup.code || currentGroup.id;
+      
+      // Find the current group in the list
+      const updatedGroup = groups.find(g => 
+        g.groupCode === groupIdentifier || g.code === groupIdentifier || g.id === groupIdentifier
+      );
+      
+      if (updatedGroup) {
+        setCurrentGroup(updatedGroup);
+      } else {
+        console.warn("Current group not found in user's groups");
+      }
     } catch (error) {
-      console.error("Error fetching group:", error);
+      console.error("Error fetching current group:", error);
+    }
+  };
+
+  // Fetch all groups that the user belongs to
+  const fetchAllGroups = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        getApiUrl('/pg/my-groups'),
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return Array.isArray(response.data) ? response.data : [response.data];
+    } catch (error) {
+      console.error("Error fetching all groups:", error);
+      return [];
     }
   };
 
@@ -67,6 +105,7 @@ export const GroupProvider = ({ children }) => {
         totalExpenses,
         currentBalance,
         fetchGroup,
+        fetchAllGroups,
       }}
     >
       {children}
