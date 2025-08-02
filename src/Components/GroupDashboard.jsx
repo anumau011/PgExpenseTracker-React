@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { 
-  Plus, Users, TrendingUp, IndianRupee, ArrowRight, ArrowLeft, X 
+  Plus, Users, TrendingUp, IndianRupee, ArrowRight, ArrowLeft, X, Copy, Check 
 } from 'lucide-react';
 
 // Context and utilities
@@ -22,6 +22,7 @@ export function GroupDashboard() {
   const [activeTab, setActiveTab] = useState('expenses');
   const [showAddExpenses, setShowAddExpenses] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [copySuccess, setCopySuccess] = useState(false);
   
   // Delete confirmation modal state
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -41,6 +42,30 @@ export function GroupDashboard() {
   // === CONTEXT HOOKS ===
   const { currentGroup, fetchGroup, currentBalance } = useGroup();
   const { currentUserId } = useUser();
+
+  // === COPY FUNCTIONALITY ===
+  
+  /**
+   * Copy group code to clipboard for sharing
+   */
+  const handleCopyGroupCode = async () => {
+    try {
+      await navigator.clipboard.writeText(currentGroup.groupCode);
+      setCopySuccess(true);
+      toast.success("Group code copied to clipboard!", {
+        duration: 2000,
+        position: 'top-center',
+      });
+      
+      // Reset copy success state after 2 seconds
+      setTimeout(() => {
+        setCopySuccess(false);
+      }, 2000);
+    } catch (error) {
+      toast.error("Failed to copy group code");
+      console.error('Copy failed:', error);
+    }
+  };
 
   // === EXPENSE DELETION HANDLERS ===
   
@@ -313,9 +338,22 @@ export function GroupDashboard() {
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate max-w-48 sm:max-w-none">
                   {currentGroup.groupName}
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  Code: {currentGroup.groupCode}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    Code: {currentGroup.groupCode}
+                  </p>
+                  <button
+                    onClick={handleCopyGroupCode}
+                    className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                    title="Copy group code"
+                  >
+                    {copySuccess ? (
+                      <Check className="h-3 w-3 text-green-600" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
