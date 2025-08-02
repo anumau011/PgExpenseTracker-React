@@ -40,7 +40,7 @@ export function GroupDashboard() {
   const [selectedYear, setSelectedYear] = useState(previousYear);
 
   // === CONTEXT HOOKS ===
-  const { currentGroup, fetchGroup, currentBalance } = useGroup();
+  const { currentGroup, fetchGroup, fetchInitialGroup, currentBalance } = useGroup();
   const { currentUserId } = useUser();
 
   // === COPY FUNCTIONALITY ===
@@ -261,7 +261,7 @@ export function GroupDashboard() {
   
   /**
    * Load group data on component mount
-   * Only fetch if currentUserId exists and currentGroup is not already loaded
+   * Fetch initial group if no currentGroup exists, otherwise just set loading to false
    */
   useEffect(() => {
     const loadGroupData = async () => {
@@ -270,9 +270,9 @@ export function GroupDashboard() {
       if (!currentGroup) {
         setIsLoading(true);
         try {
-          await fetchGroup();
+          await fetchInitialGroup();
         } catch (error) {
-          console.error('Error fetching group data:', error);
+          console.error('Error fetching initial group data:', error);
         } finally {
           setIsLoading(false);
         }
@@ -282,7 +282,7 @@ export function GroupDashboard() {
     };
 
     loadGroupData();
-  }, [currentUserId, currentGroup, fetchGroup]);
+  }, [currentUserId, currentGroup, fetchInitialGroup]);
 
   // === LOADING AND ERROR STATES ===
 
