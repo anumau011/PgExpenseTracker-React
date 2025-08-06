@@ -28,7 +28,12 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       setSelectedDate(new Date().toISOString().split("T")[0]);
+      // Fetch groups immediately when modal opens
       fetchAllGroups();
+    } else {
+      // Reset state when modal closes
+      setAllGroups([]);
+      setSelectedGroupsForExpense([]);
     }
   }, [isOpen, currentGroup]);
 
@@ -107,6 +112,7 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
     setNewTag("");
     setSelectedGroupsForExpense([]);
     setAllGroups([]);
+    setIsLoadingGroups(false); // Reset loading state
     onClose();
   };
 
@@ -274,7 +280,7 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
           </div>
 
           {/* Additional Groups Selection */}
-          {allGroups.length > 1 && (
+          {(allGroups.length > 1 || isLoadingGroups) && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 <Users className="h-4 w-4 inline mr-1" />
@@ -282,7 +288,10 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
               </label>
               
               {isLoadingGroups ? (
-                <div className="text-sm text-gray-500">Loading groups...</div>
+                <div className="flex items-center space-x-2 text-sm text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span>Loading groups...</span>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {(() => {
