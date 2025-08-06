@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import axios from 'axios';
-import { IndianRupee, X, Plus, Tag, Calendar, Hash } from "lucide-react";
+import { IndianRupee, X, Plus, Tag, Calendar, Hash, Users, Check } from "lucide-react";
 import { useGroup } from "../Context/GroupContext";
 import { getApiUrl } from "../Utils/api";
+import { toast } from "react-hot-toast";
 
 export const AddExpenseModal = ({ isOpen, onClose }) => {
   const [amount, setAmount] = useState("");
@@ -10,36 +11,62 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
   const [tags, setTags] = useState([]);
   const [newTag, setNewTag] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [allGroups, setAllGroups] = useState([]);
+  const [selectedGroupsForExpense, setSelectedGroupsForExpense] = useState([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   
-  const { fetchGroup, currentGroup } = useGroup();
+  const { fetchGroup, currentGroup, fetchAllGroups: contextFetchAllGroups } = useGroup();
 
   const commonTags = [
     "grocery", "vegetables", "fruits", "bread", "paneer", "milk",
     "gas", "rice", "dal", "atta", "others"
   ];
 
+  // Helper function to get group ID
+  const getGroupId = (group) => group?.groupCode || group?.code || group?.id;
+
   useEffect(() => {
     if (isOpen) {
       setSelectedDate(new Date().toISOString().split("T")[0]);
+      fetchAllGroups();
     }
-  }, [isOpen]);
+  }, [isOpen, currentGroup]);
+
+  const fetchAllGroups = async () => {
+    setIsLoadingGroups(true);
+    try {
+      const groups = await contextFetchAllGroups();
+      setAllGroups(groups || []);
+    } catch (error) {
+      console.error('Failed to fetch groups:', error);
+      setAllGroups([]);
+    } finally {
+      setIsLoadingGroups(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     if (amount && tags.length > 0 && selectedDate && currentGroup) {
+      const groupCodes = [
+        getGroupId(currentGroup),
+        ...selectedGroupsForExpense.map(group => getGroupId(group))
+      ];
+
       const expense = {
         amount: Math.round(parseFloat(amount) * 100) / 100,
         paymentDate: selectedDate,
         tags: tags.filter(tag => tag.trim() !== ''),
-        groupCode: currentGroup.groupCode || currentGroup.code || currentGroup.id
+        groupCodes: groupCodes
       };
 
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.post(
-          getApiUrl('/pg/addExpense'),
+        
+        await axios.post(
+          getApiUrl('/pg/addExpenseToGroups'),
           expense,
           {
             headers: {
@@ -48,18 +75,27 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
           }
         );
 
-        if (response.status === 201 || response.status === 200) {
-          await fetchGroup();
-          handleClose();
-        }
+        await fetchGroup();
+        const totalGroups = groupCodes.length;
+        toast.success(`Expense added successfully !`, {
+          duration: 2000,
+          position: 'top-center',
+        });
+        handleClose();
       } catch (error) {
         console.error('Failed to add expense:', error);
-        alert('Error adding expense ❌');
+        toast.error('Error adding expense', {
+          duration: 2000,
+          position: 'top-center',
+        });
       } finally {
         setIsLoading(false);
       }
     } else if (!currentGroup) {
-      alert('No group selected. Please select a group first.');
+      toast.error('No group selected. Please select a group first.', {
+        duration: 3000,
+        position: 'top-center',
+      });
       setIsLoading(false);
     }
   };
@@ -69,7 +105,23 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
     setSelectedDate(new Date().toISOString().split("T")[0]);
     setTags([]);
     setNewTag("");
+    setSelectedGroupsForExpense([]);
+    setAllGroups([]);
     onClose();
+  };
+
+  const toggleGroupSelection = (group) => {
+    const groupId = getGroupId(group);
+    
+    setSelectedGroupsForExpense(prev => {
+      const isSelected = prev.some(selectedGroup => getGroupId(selectedGroup) === groupId);
+      
+      if (isSelected) {
+        return prev.filter(selectedGroup => getGroupId(selectedGroup) !== groupId);
+      } else {
+        return [...prev, group];
+      }
+    });
   };
 
   const addTag = (tag) => {
@@ -91,7 +143,7 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const suggestedTags = [...new Set(commonTags)]
+  const suggestedTags = commonTags
     .filter(tag => !tags.includes(tag) && tag.includes(newTag.toLowerCase()))
     .slice(0, 8);
 
@@ -99,15 +151,22 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 bg-white p-6 border-b border-gray-200 rounded-t-2xl flex justify-between items-center">
+        <div className="sticky top-0 bg-white p-6 border-b border-gray-200 rounded-t-2xl flex justify-between items-center z-10">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Add New Expense</h2>
             {currentGroup && (
-              <p className="text-sm text-gray-600 mt-1">
-                Adding to: <span className="font-medium text-blue-600">{currentGroup.groupName || currentGroup.name || 'Current Group'}</span>
-              </p>
+              <div className="text-sm text-gray-600 mt-1">
+                <p>
+                  Adding to: <span className="font-medium text-blue-600">{currentGroup.groupName || currentGroup.name || 'Current Group'}</span>
+                </p>
+                {selectedGroupsForExpense.length > 0 && (
+                  <p className="text-xs text-green-600 mt-1">
+                    + {selectedGroupsForExpense.length} additional group{selectedGroupsForExpense.length > 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
             )}
           </div>
           <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-full">
@@ -115,9 +174,11 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Amount */}
+        {/* Form Container with Scroll */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* Amount */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <IndianRupee className="h-4 w-4 inline mr-1" />
@@ -212,7 +273,59 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
             />
           </div>
 
-          {/* Buttons */}
+          {/* Additional Groups Selection */}
+          {allGroups.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                <Users className="h-4 w-4 inline mr-1" />
+                Want to add this expense to more groups?
+              </label>
+              
+              {isLoadingGroups ? (
+                <div className="text-sm text-gray-500">Loading groups...</div>
+              ) : (
+                <div className="space-y-3">
+                  {(() => {
+                    const currentGroupId = getGroupId(currentGroup);
+                    const otherGroups = allGroups.filter(group => getGroupId(group) !== currentGroupId);
+
+                    if (otherGroups.length === 0) {
+                      return <div className="text-sm text-gray-500">No other groups available</div>;
+                    }
+
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {otherGroups.map((group) => {
+                          const groupId = getGroupId(group);
+                          const isSelected = selectedGroupsForExpense.some(selectedGroup => 
+                            getGroupId(selectedGroup) === groupId
+                          );
+                          
+                          return (
+                            <button
+                              key={groupId}
+                              type="button"
+                              onClick={() => toggleGroupSelection(group)}
+                              className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                isSelected 
+                                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                                  : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                              }`}
+                            >
+                              {isSelected && (
+                                <Check className="h-3 w-3 mr-1" />
+                              )}
+                              {group.groupName || group.name || 'Unnamed Group'}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          )}          {/* Buttons */}
           <div className="flex space-x-3 pt-4">
             <button
               type="button"
@@ -231,6 +344,7 @@ export const AddExpenseModal = ({ isOpen, onClose }) => {
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );
