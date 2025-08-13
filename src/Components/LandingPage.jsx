@@ -7,7 +7,9 @@ import JoinGroupModal from './JoinGroupModal';
 import axios from 'axios';
 import { GroupDashboard } from './GroupDashboard';
 import { useGroup } from '../Context/GroupContext';
+import { useUser } from '../Context/CurrentUserIdContext';
 import { getApiUrl } from "../Utils/api";
+import { checkNotificationSetup } from '../Utils/firebase';
 
 
 export function LandingPage({
@@ -28,15 +30,22 @@ export function LandingPage({
   const [token, setToken] = useState(false);
   const navigate = useNavigate();
 
-  const {setCurrentGroup}=useGroup()
+  const { setCurrentGroup, fetchAllGroups } = useGroup();
+  const { currentUserId } = useUser();
 
   // Check token on mount
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     if (storedToken) {
       setToken(true);
+      
+      // Check notification setup for already logged in users
+      if (currentUserId) {
+        console.log('Checking notification setup for logged in user:', currentUserId);
+        checkNotificationSetup(currentUserId, fetchAllGroups);
+      }
     }
-  }, []);
+  }, [currentUserId, fetchAllGroups]);
 
   const handleLogin = () => {
     if (handleLoginClick) {

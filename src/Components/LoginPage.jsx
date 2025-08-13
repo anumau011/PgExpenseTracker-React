@@ -4,7 +4,9 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { useUser } from '../Context/CurrentUserIdContext';
+import { useGroup } from '../Context/GroupContext';
 import { getApiUrl, getBaseUrl } from "../Utils/api";
+import { registerDeviceForNotifications, checkNotificationSetup } from '../Utils/firebase';
 
 export function LoginPage() {
   const [userId, setUserId] = useState('');
@@ -12,7 +14,8 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const {setUserFromToken }=useUser();
+  const { setUserFromToken } = useUser();
+  const { fetchAllGroups } = useGroup();
 
   const navigate = useNavigate();
 
@@ -54,12 +57,10 @@ export function LoginPage() {
 
         const user = jwtDecode(token);
         onSuccesLogin(user);
-        // console.log("The userId:")
-        // // console.log(response.data.userId)
-        // const userId = parseJwt(localStorage.getItem('token'))?.sub;
-        // console.log(userId)
 
-        
+        // Prompt for notification permission after successful login
+        registerDeviceForNotifications(user.userId, fetchAllGroups);
+
         navigate('/');
       } else {
         setError('Login failed. Please try again.');
