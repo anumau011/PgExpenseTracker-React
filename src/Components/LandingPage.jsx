@@ -171,12 +171,12 @@ export function LandingPage({
             <h1 className="text-5xl font-bold text-gray-900 mb-4">
               {isAuthenticated
                 ? `Welcome back, ${currentUser?.name || ''}!`
-                : 'Split Bills & Track Expenses'}
+                : 'Track Expenses'}
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
               {isAuthenticated
                 ? 'Manage your group expenses effortlessly. Create a new group or join an existing one.'
-                : 'Split bills, track expenses, and manage group finances effortlessly. Perfect for roommates, friends, and travel groups.'}
+                : 'Track expenses, and manage group finances effortlessly. Perfect for roommates, friends, and travel groups.'}
             </p>
 
             
@@ -258,9 +258,9 @@ export function LandingPage({
           />
           <FeatureCard
             icon={<TrendingUp className="h-6 w-6 text-white" />}
-            title="Smart Expense Splitting"
+            title="Track Together, Hassle-Free"
             color="from-orange-500 to-orange-600"
-            description="Automatically calculate who owes what with intelligent splitting"
+            description="Effortlessly record group expenses and keep everyone in sync"
           />
           <FeatureCard
             icon={<Plus className="h-6 w-6 text-white" />}

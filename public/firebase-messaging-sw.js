@@ -44,8 +44,8 @@ try {
       const notificationTitle = payload.notification?.title || 'PG Expense Tracker';
       const notificationOptions = {
         body: payload.notification?.body || 'You have a new notification',
-        icon: 'public/vite.svg',
-        badge: 'public/vite.svg',
+        icon: '/vite.svg',
+        badge: '/vite.svg',
         timestamp: Date.now(),
         tag: 'expense-notification',
         data: payload.data || {},
